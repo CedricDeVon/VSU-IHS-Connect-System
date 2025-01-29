@@ -1,3 +1,32 @@
+<script setup lang="ts">
+import { ref, defineEmits } from 'vue';
+
+const file = ref<File | null>(null);
+const successMessage = ref<string>('');
+
+const emit = defineEmits(['close', 'file-uploaded']);
+
+function handleFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files) {
+    file.value = target.files[0];
+    successMessage.value = '';
+  }
+}
+
+function uploadFile() {
+  if (file.value) {
+    emit('file-uploaded', file.value);
+    successMessage.value = 'File uploaded successfully!';
+    file.value = null;
+    setTimeout(() => {
+      emit('close');
+    }, 1000);
+  }
+}
+</script>
+
+
 <template>
     <div class="fixed inset-0 z-50 flex items-center justify-center">
       <!-- Backdrop with blur effect -->
@@ -23,6 +52,7 @@
               <Icon name="heroicons:information-circle" class="w-5 h-5 text-blue-600 mt-0.5" />
               <div class="ml-3">
                 <h3 class="text-sm font-medium text-blue-800">CSV Format Requirements</h3>
+                <!--UPDATE REQS IF NECESSARY-->
                 <ul class="mt-2 text-sm text-blue-700 space-y-1">
                   <li class="flex items-center">
                     <Icon name="heroicons:check-circle" class="w-4 h-4 mr-2 text-blue-600" />
@@ -111,34 +141,6 @@
       </div>
     </div>
   </template>
-  
-  <script>
-    export default {
-      name: 'AdviserCSVUploadModal',
-      data() {
-        return {
-          file: null,
-          successMessage: '',
-        };
-      },
-      methods: {
-        handleFileChange(event) {
-          this.file = event.target.files[0];
-          this.successMessage = '';
-        },
-        uploadFile() {
-          if (this.file) {
-            this.$emit('file-uploaded', this.file);
-            this.successMessage = 'File uploaded successfully!';
-            this.file = null;
-            setTimeout(() => {
-              this.$emit('close');
-            }, 1000);
-          }
-        },
-      },
-    };
-  </script>
   
   <style scoped>
   /* Remove all existing styles */

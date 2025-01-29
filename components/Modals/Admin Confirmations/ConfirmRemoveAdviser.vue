@@ -1,3 +1,32 @@
+<script setup lang="ts">
+import { defineProps, defineEmits } from 'vue';
+import { section } from '~/data/section';
+
+const props = defineProps<{
+    adviser: {
+        firstName: string;
+        lastName: string;
+    };
+    section: {
+        sectionLevel: number;
+        sectionName: string;
+    };
+}>();
+
+const emit = defineEmits(['close', 'remove']);
+
+function cancelRemove() {
+    emit('close');
+}
+
+async function proceedRemove() {
+    emit('remove');
+    alert('Adviser has been removed');
+}
+</script>
+
+ 
+
 <template>
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 font-century-gothic" >
         <div>
@@ -19,37 +48,3 @@
         </div>
       </div>
   </template>
-<script>
-import { section } from '~/data/section';
-
-
-export default {
-    props: {
-        adviser: {
-            type: Object,
-            required: true
-        },
-        section: {
-            type: Object,
-            required: true
-        }
-
-    },
-    emits: ['close', 'remove'],
-
-    methods: {
-        cancelRemove() {
-            this.$emit('close');
-        },
-
-        async proceedRemove() {
-            this.$emit('remove');  
-            alert('Adviser has been removed');
-        },
-
-    },
-
-}
-</script>
-
- 

@@ -1,3 +1,26 @@
+<script setup lang="ts">
+import { defineProps, defineEmits } from 'vue';
+
+ const props = defineProps({
+   adviser: {
+     type: Object,
+     required: true
+   }
+ });
+
+ const emit = defineEmits(['close', 'approve']);
+
+const cancel = () => {
+  emit('close');
+};
+
+const accept = async () => {
+  props.adviser.status = 'inActive';
+  emit('approve');
+};
+
+</script>
+
 <template>
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 font-century-gothic" >
         <div>
@@ -20,25 +43,3 @@
         </div>
       </div>
   </template>
-  <script setup>
-    import { defineProps, defineEmits } from 'vue';
-  
-     const props = defineProps({
-       adviser: {
-         type: Object,
-         required: true
-       }
-     });
-  
-     const emit = defineEmits(['close', 'approve']);
-  
-    const cancel = () => {
-      emit('close');
-    };
-  
-    const accept = async () => {
-      props.adviser.status = 'inActive';
-      emit('approve');
-    };
-  
-  </script>

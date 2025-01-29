@@ -1,227 +1,189 @@
-<script>
-  import AdminSidebar from '@/components/Blocks/AdminSidebar.vue';
-  import AdminHeader from '@/components/Blocks/AdminHeader.vue';
-  import AdviserCSVUpload from '../../components/Modals/AdviserCSVUpload.vue';
-  import ApproveAccount from '~/components/Modals/Admin Confirmations/ApproveAccount.vue';
-  import ConfirmAddAdviser from '~/components/Modals/Admin Confirmations/ConfirmAddAdviser.vue';
-  import emailjs from '@emailjs/browser';
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import AdminSidebar from '@/components/Blocks/AdminSidebar.vue';
+import AdminHeader from '@/components/Blocks/AdminHeader.vue';
+import AdviserCSVUpload from '../../components/Modals/AdviserCSVUpload.vue';
+import ApproveAccount from '~/components/Modals/Admin Confirmations/ApproveAccount.vue';
+import ConfirmAddAdviser from '~/components/Modals/Admin Confirmations/ConfirmAddAdviser.vue';
+import emailjs from '@emailjs/browser';
 
-  import { getAdvisers } from '~/data/adviser';
-  import { section } from '~/data/section';
-  import {users} from '~/data/user';
-   
-  
-  
-  export default {
-    name: 'AccountsPage',
-    components: {
-      AdminSidebar,
-      AdminHeader,
-      AdviserCSVUpload,
-      ApproveAccount,
-      ConfirmAddAdviser
-    },
-    data() {
-      return {
-        selectedAccount: 'all', // Default selected option
-        add: false,
-        showUploadModal: false,
-        file: null,
-        // Sample data
-        advisers: [],
-        showApprovalModal: false,
-        propAdviser:{
-          facultyId: '',
-          name: '',
-          section: '',
-          email: ''
-        },
-        showConfirmAdd: false,
-        pendingAdviser: {}
-      
-      };
-    },
-    watch: {
-      showApprovalModal(newVal) {
-        console.log('showApprovalModal changed:', newVal);
-      }
-    },
-  
-    created() {
-      // Fetch advisers when the component is created
-      this.fetchAdvisers();
-      const accountType = this.$route.query.accountType;
-      if (accountType) {
-        this.selectedAccount = accountType;
-        this.add = true;  //this must be disabled after adding or cancelling
-      }
-    },
-  
-    mounted() {
-      // Check for pending registrations on mount
-      this.checkPendingRegistrations();
-    },
-  
-    computed: {
-     
-      filteredAdvisers() {
-        if (this.selectedAccount === 'all') {
-          return (this.advisers.filter(adviser => adviser.status !== 'pending')).sort((a,b) => {
-            const order = {active: 1, inActive:2};
-            return (order[a.status] || 3) - (order[b.status] || 3)});
-        } else if (this.selectedAccount === 'active') {
-          return this.advisers.filter(adviser => adviser.status === 'active');
-        } else if (this.selectedAccount === 'inactive') {
-          return this.advisers.filter(adviser => adviser.status === 'inActive');
-        } else if (this.selectedAccount === 'pending') {
-          return this.advisers.filter(adviser => adviser.status === 'pending');
-        }
-      }
-    },
-    methods: {
-  
-      fetchAdvisers() {
-        this.advisers = getAdvisers(); // Assign the result of getAdvisers to advisers
-      },
-  
-      handleFileUpload(event) {
-        this.file = event.target.files[0];
-      },
-      uploadFile() {
-        console.log('File ready for upload:', this.file);
-        this.showUploadModal = false;
-        this.file = null;
-      },
-  
-      acceptRequest(adviser) {
-        this.pendingAdviser = adviser;
-        this.showApprovalModal = true;
-      },
-      
-      confirmAcceptRequest() {
-        this.showApprovalModal = false;
-        alert('Adviser account has been approved');
-        this.$router.push({ name: 'admin-search', query: { searchType: 'section' } });
-        // After successful acceptance, update notifications
-        const adminHeader = this.$refs.adminHeader;
-        if (adminHeader) {
-          const notifications = JSON.parse(localStorage.getItem('admin-notifications') || '[]');
-          const updatedNotifications = notifications.filter(
-            n => !(n.type === 'account' && n.message.includes(adviser.firstName + ' ' + adviser.lastName))
-          );
-          localStorage.setItem('admin-notifications', JSON.stringify(updatedNotifications));
-        }
-        this.pendingAdviser.value = {};
-      },
-      rejectRequest(adviser) {
-        const adminHeader = this.$refs.adminHeader;
-        if (adminHeader) {
-          const notifications = JSON.parse(localStorage.getItem('admin-notifications') || '[]');
-          const updatedNotifications = notifications.filter(
-            n => !(n.type === 'account' && n.message.includes(adviser.firstName + ' ' + adviser.lastName))
-          );
-          localStorage.setItem('admin-notifications', JSON.stringify(updatedNotifications));
-        }
-  
-        this.advisers = this.advisers.filter(a => a.facultyId !== adviser.facultyId);
-      },
-  
-      selectAdviser(adviser) {
-        // Handle the selection of an adviser
-        console.log('Adviser selected:', adviser);
-        // You can add further logic here to handle the selection
-      },
-  
-      async handleNewRegistration(adviser) {
-        // Your existing registration logic...
-        
-        // Get reference to AdminHeader component
-        const adminHeader = this.$parent.$refs.adminHeader;
-        if (adminHeader) {
-          adminHeader.createAccountRequestNotification(adviser);
-        }
-      },
-  
-      checkPendingRegistrations() {
-        const pendingAdvisers = this.advisers.filter(adviser => adviser.status === 'pending');
-        if (pendingAdvisers.length > 0) {
-          // Get reference to AdminHeader component
-          const adminHeader = this.$refs.adminHeader;
-          if (adminHeader) {
-            pendingAdvisers.forEach(adviser => {
-              adminHeader.createAccountRequestNotification(adviser);
-            });
-          }
-        }
-      },
-  
-      async sendEmail (user, adviser, section){
-          try {
-            const response = await fetch('/api/approval-email'); 
-          
-            if (!response.ok) {
-              throw new Error('Failed to fetch configuration');
-            }
-            const config = await response.json(); 
-            
-            const templateParams = {
-              to_email: user.email,
-              adviserName: `${adviser.firstName} ${adviser.lastName}`,
-              adviserID: adviser.id,
-              adviserSection: `${section.sectionLevel} - ${section.sectionName}`,
-            };
-  
-            await emailjs.send(
-              config.emailServiceId,
-              config.emailTemplateId,
-              templateParams,
-              config.emailPublicKey
-            );
-  
-            alert('Email sent successfully!');
-          } catch (error) {
-            console.error('Error sending email:', error);
-          }
-      },
-  
-      addToSection(adviser) {
-        this.pendingAdviser = adviser;
-        this.showConfirmAdd = true;
-      },
-  
-      async confirmAddToSection() {
-        const sectionObj = section.find((sec) => sec.id === this.$route.query.sectionId);
-        if (sectionObj) {
-          sectionObj.adviserId = this.pendingAdviser.id;
-          this.pendingAdviser.sectionId = sectionObj.id;
-          this.pendingAdviser.status = 'active';
-          const userAdviser = users.find((u) => u.userId === this.pendingAdviser.userId);
-          if (userAdviser) {
-            userAdviser.canAccess = true; // field name can be changed with status if that's what in the DB
-            //await this.sendEmail(userAdviser, this.pendingAdviser, sectionObj);
+import { getAdvisers } from '~/data/adviser';
+import { section } from '~/data/section';
+import { users } from '~/data/user';
 
-  //Removing this comment will make the function work
-  //careful with this as this will send automatically when mounted or specifically when assigning an adviser to section
-  //careful because we have a LIMITED EMAIL SENDING W/ 200 PER MONTH I GUESS HAHAHAHAHA
-            this.showConfirmAdd = false; 
-            alert('Adviser has been added to the section and email has been sent');
-          }
-          this.$router.push({ path: `/admin/section/${sectionObj.id}` });
-        } else {
-          alert('Section not found.');
-        }
-        this.add = false;
-        this.pendingAdviser = {};
-      },
-      cancelAddToSection() {
-        this.showConfirmAdd = false;
-        this.pendingAdviser = {};
-      },
-  
-  
+const selectedAccount = ref('all'); // Default selected option
+const add = ref(false);
+const showUploadModal = ref(false);
+const file = ref(null);
+const advisers = ref([]);
+const showApprovalModal = ref(false);
+const propAdviser = ref({
+  facultyId: '',
+  name: '',
+  section: '',
+  email: ''
+});
+const showConfirmAdd = ref(false);
+const pendingAdviser = ref({});
+
+const route = useRoute();
+const router = useRouter();
+
+watch(showApprovalModal, (newVal) => {
+  console.log('showApprovalModal changed:', newVal);
+});
+
+onMounted(() => {
+  fetchAdvisers();
+  const accountType = route.query.accountType;
+  if (accountType) {
+    selectedAccount.value = accountType as string;
+    add.value = true; // this must be disabled after adding or cancelling
+  }
+  checkPendingRegistrations();
+});
+
+const filteredAdvisers = computed(() => {
+  if (selectedAccount.value === 'all') {
+    return advisers.value.filter(adviser => adviser.status !== 'pending').sort((a, b) => {
+      const order = { active: 1, inActive: 2 };
+      return (order[a.status] || 3) - (order[b.status] || 3);
+    });
+  } else if (selectedAccount.value === 'active') {
+    return advisers.value.filter(adviser => adviser.status === 'active');
+  } else if (selectedAccount.value === 'inactive') {
+    return advisers.value.filter(adviser => adviser.status === 'inActive');
+  } else if (selectedAccount.value === 'pending') {
+    return advisers.value.filter(adviser => adviser.status === 'pending');
+  }
+});
+
+function fetchAdvisers() {
+  advisers.value = getAdvisers(); // Assign the result of getAdvisers to advisers
+}
+
+function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement;
+  file.value = target.files ? target.files[0] : null;
+}
+
+function uploadFile() {
+  console.log('File ready for upload:', file.value);
+  showUploadModal.value = false;
+  file.value = null;
+}
+
+function acceptRequest(adviser: any) {
+  pendingAdviser.value = adviser;
+  showApprovalModal.value = true;
+}
+
+function confirmAcceptRequest() {
+  showApprovalModal.value = false;
+  alert('Adviser account has been approved');
+  router.push({ name: 'admin-search', query: { searchType: 'section' } });
+  const adminHeader = ref(null);
+  if (adminHeader.value) {
+    const notifications = JSON.parse(localStorage.getItem('admin-notifications') || '[]');
+    const updatedNotifications = notifications.filter(
+      (n: any) => !(n.type === 'account' && n.message.includes(pendingAdviser.value.firstName + ' ' + pendingAdviser.value.lastName))
+    );
+    localStorage.setItem('admin-notifications', JSON.stringify(updatedNotifications));
+  }
+  pendingAdviser.value = {};
+}
+
+function rejectRequest(adviser: any) {
+  const adminHeader = ref(null);
+  if (adminHeader.value) {
+    const notifications = JSON.parse(localStorage.getItem('admin-notifications') || '[]');
+    const updatedNotifications = notifications.filter(
+      (n: any) => !(n.type === 'account' && n.message.includes(adviser.firstName + ' ' + adviser.lastName))
+    );
+    localStorage.setItem('admin-notifications', JSON.stringify(updatedNotifications));
+  }
+  advisers.value = advisers.value.filter(a => a.facultyId !== adviser.facultyId);
+}
+
+function selectAdviser(adviser: any) {
+  console.log('Adviser selected:', adviser);
+}
+
+async function handleNewRegistration(adviser: any) {
+  const adminHeader = ref(null);
+  if (adminHeader.value) {
+    adminHeader.value.createAccountRequestNotification(adviser);
+  }
+}
+
+function checkPendingRegistrations() {
+  const pendingAdvisers = advisers.value.filter(adviser => adviser.status === 'pending');
+  if (pendingAdvisers.length > 0) {
+    const adminHeader = ref(null);
+    if (adminHeader.value) {
+      pendingAdvisers.forEach(adviser => {
+        adminHeader.value.createAccountRequestNotification(adviser);
+      });
     }
-  };
-  </script>
+  }
+}
+
+async function sendEmail(user: any, adviser: any, section: any) {
+  try {
+    const response = await fetch('/api/approval-email');
+    if (!response.ok) {
+      throw new Error('Failed to fetch configuration');
+    }
+    const config = await response.json();
+    const templateParams = {
+      to_email: user.email,
+      adviserName: `${adviser.firstName} ${adviser.lastName}`,
+      adviserID: adviser.id,
+      adviserSection: `${section.sectionLevel} - ${section.sectionName}`,
+    };
+    await emailjs.send(
+      config.emailServiceId,
+      config.emailTemplateId,
+      templateParams,
+      config.emailPublicKey
+    );
+    alert('Email sent successfully!');
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+}
+
+function addToSection(adviser: any) {
+  pendingAdviser.value = adviser;
+  showConfirmAdd.value = true;
+}
+
+async function confirmAddToSection() {
+  const sectionObj = section.find((sec: any) => sec.id === route.query.sectionId);
+  if (sectionObj) {
+    sectionObj.adviserId = pendingAdviser.value.id;
+    pendingAdviser.value.sectionId = sectionObj.id;
+    pendingAdviser.value.status = 'active';
+    const userAdviser = users.find((u: any) => u.userId === pendingAdviser.value.userId);
+    if (userAdviser) {
+      userAdviser.canAccess = true;
+      showConfirmAdd.value = false;
+      alert('Adviser has been added to the section and email has been sent');
+    }
+    router.push({ path: `/admin/section/${sectionObj.id}` });
+  } else {
+    alert('Section not found.');
+  }
+  add.value = false;
+  pendingAdviser.value = {};
+}
+
+function cancelAddToSection() {
+  showConfirmAdd.value = false;
+  pendingAdviser.value = {};
+}
+</script>
 
 <template>
     <div class="flex h-screen bg-[#FFFEF1]">

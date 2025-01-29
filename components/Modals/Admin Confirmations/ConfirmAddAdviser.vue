@@ -1,3 +1,39 @@
+<script setup lang="ts">
+import { ref, defineProps, defineEmits, onMounted } from 'vue';
+import { section } from '~/data/section';
+
+const props = defineProps<{
+    adviser: {
+        firstName: string;
+        lastName: string;
+    };
+    sectionId: string;
+}>();
+
+const emit = defineEmits(['close', 'add']);
+
+const sectionData = ref<{ sectionLevel: string; sectionName: string } | undefined>(undefined);
+
+const cancelAdd = () => {
+    emit('close');
+};
+
+const proceedAdd = async () => {
+    console.log('Adding adviser to section');
+    emit('add');
+};
+
+const getSection = () => {
+    sectionData.value = section.find((sec) => sec.id === props.sectionId);
+};
+
+onMounted(() => {
+    getSection();
+});
+</script>
+
+ 
+
 <template>
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 font-century-gothic" >
         <div>
@@ -19,49 +55,3 @@
         </div>
       </div>
   </template>
-<script>
-import { section } from '~/data/section';
-
-
-export default {
-    props: {
-        adviser: {
-            type: Object,
-            required: true
-        },
-        sectionId: {
-            type: String,
-            required: true
-        }
-
-    },
-    emits: ['close', 'add'],
-
-    data() {
-        return {
-            section: {}
-        };
-    },
-
-    methods: {
-        cancelAdd() {
-            this.$emit('close');
-        },
-
-        async proceedAdd() {
-            console.log('Adding adviser to section');
-            this.$emit('add');  
-        },
-
-        getSection(){
-           this.section = section.find((sec)=> sec.id === this.sectionId);
-        }
-    },
-
-    mounted() {
-        this.getSection();
-    },
-}
-</script>
-
- 

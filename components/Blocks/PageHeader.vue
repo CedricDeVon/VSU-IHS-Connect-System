@@ -1,13 +1,9 @@
-<script>
-export default {
-  name: 'PageHeader',
-  props: {
-    academicYear: {
-      type: String,
-      required: true
-    }
-  }
-}
+<script setup lang="ts">
+import { defineProps } from 'vue'
+
+const props = defineProps<{
+  academicYear: string
+}>()
 </script>
 
 <template>
